@@ -6,13 +6,14 @@ import time
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 
 
-def get_wifi_details(interface='wlan0'):
-    # Get SSIDs of available networks
-    scan_output = subprocess.check_output(['iwlist', interface, 'scan']).decode('utf-8')
-    ssids = [line.split(':')[1].strip() for line in scan_output.split('\n') if "ESSID" in line]
-
+def get_current_wifi_details(interface='wlan0'):
     # Get current connection details using 'iw'
     iw_result = subprocess.check_output(['iw', interface, 'link']).decode('utf-8')
+    
+    # Attempt to extract the SSID of the current connection
+    ssid_match = re.search(r'SSID: (.*)', iw_result)
+    ssid = ssid_match.group(1) if ssid_match else "Not Connected"
+
     signal_match = re.search(r'signal: (-?\d+)', iw_result)
     frequency_match = re.search(r'freq: (\d+)', iw_result)
     signal_strength = signal_match.group(1) if signal_match else "N/A"
@@ -26,7 +27,7 @@ def get_wifi_details(interface='wlan0'):
     except subprocess.CalledProcessError:
         latency = "Ping failed"
 
-    return ssids, signal_strength, frequency, latency
+    return ssid, signal_strength, frequency, latency
 
 # Configure your MQTT client as before
 myMQTTClient = AWSIoTMQTTClient("raspberryPiThing")
@@ -37,12 +38,12 @@ print("Endpoint Configured")
 myMQTTClient.connect()
 print("Client Connected")
 
-ssids, signal_strength, frequency, latency = get_wifi_details()
+ssid, signal_strength, frequency, latency = get_current_wifi_details()
 
-# Assuming you want to send a single message with all details
+# Create a single message with all details
 jsonmsg = json.dumps({
     "timestamp": time.time(),
-    "ssids": ssids,
+    "ssid": ssid,
     "signal_strength": signal_strength,
     "frequency": frequency,
     "latency": latency,
