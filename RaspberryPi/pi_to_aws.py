@@ -28,9 +28,9 @@ def get_wifi_details(interface='wlan0'):
     
     return ssid, rssi, latency
 
-# Setup your AWS IoT MQTT Client
 myMQTTClient = AWSIoTMQTTClient("raspberryPiThing")
-# Assuming MQTT client configuration is done as in previous examples
+myMQTTClient.configureEndpoint("a2x5w8hvbskv9v-ats.iot.ap-southeast-2.amazonaws.com", 8883)
+myMQTTClient.configureCredentials("./AmazonRootCA1.pem", "./ef0c0ecdba3f5dcee71d2c5ba8f5cd3d328a520d0d272d9b4fa5efc7ed8e014a-private.pem.key", "./ef0c0ecdba3f5dcee71d2c5ba8f5cd3d328a520d0d272d9b4fa5efc7ed8e014a-certificate.pem.crt")
 
 def main():
     myMQTTClient.connect()
@@ -60,3 +60,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
