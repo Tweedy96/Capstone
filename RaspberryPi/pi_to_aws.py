@@ -49,7 +49,7 @@ def main():
         }, indent=2)
         
         print(jsonmsg)
-        topic = "wifi/metrics"
+        topic = "wifi/inbound"
         myMQTTClient.publish(topic, jsonmsg, 0)
         print("Message Sent")
         
