@@ -9,7 +9,7 @@ from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 def get_wifi_details(interface='wlan0'):
     # Get SSIDs of available networks
     scan_output = subprocess.check_output(['iwlist', interface, 'scan']).decode('utf-8')
-    ssids = [line.split(':')[1].strip() for line in scan_text.split('\n') if "ESSID" in line]
+    ssids = [line.split(':')[1].strip() for line in scan_output.split('\n') if "ESSID" in line]
 
     # Get current connection details using 'iw'
     iw_result = subprocess.check_output(['iw', interface, 'link']).decode('utf-8')
