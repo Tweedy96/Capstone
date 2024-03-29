@@ -1,17 +1,32 @@
 import json
+import re
 import subprocess
 import time
 
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 
 
-# Function to scan for WiFi networks and return a list of SSIDs
-def scan_wifi_networks(interface='wlan0'):
-    scan_output = subprocess.check_output(['iwlist', interface, 'scan'])
-    scan_text = scan_output.decode('utf-8')
-    # This is a simplistic parser; consider using more robust parsing depending on your needs
+def get_wifi_details(interface='wlan0'):
+    # Get SSIDs of available networks
+    scan_output = subprocess.check_output(['iwlist', interface, 'scan']).decode('utf-8')
     ssids = [line.split(':')[1].strip() for line in scan_text.split('\n') if "ESSID" in line]
-    return ssids
+
+    # Get current connection details using 'iw'
+    iw_result = subprocess.check_output(['iw', interface, 'link']).decode('utf-8')
+    signal_match = re.search(r'signal: (-?\d+)', iw_result)
+    frequency_match = re.search(r'freq: (\d+)', iw_result)
+    signal_strength = signal_match.group(1) if signal_match else "N/A"
+    frequency = frequency_match.group(1) if frequency_match else "N/A"
+
+    # Measure latency
+    try:
+        ping_result = subprocess.check_output(['ping', '-c', '4', '8.8.8.8']).decode('utf-8')
+        latency_match = re.search(r'rtt min/avg/max/mdev = [\d.]+/([\d.]+)/[\d.]+/[\d.]+ ms', ping_result)
+        latency = latency_match.group(1) if latency_match else "N/A"
+    except subprocess.CalledProcessError:
+        latency = "Ping failed"
+
+    return ssids, signal_strength, frequency, latency
 
 # Configure your MQTT client as before
 myMQTTClient = AWSIoTMQTTClient("raspberryPiThing")
@@ -19,24 +34,25 @@ myMQTTClient.configureEndpoint("a2x5w8hvbskv9v-ats.iot.ap-southeast-2.amazonaws.
 myMQTTClient.configureCredentials("./AmazonRootCA1.pem", "./ef0c0ecdba3f5dcee71d2c5ba8f5cd3d328a520d0d272d9b4fa5efc7ed8e014a-private.pem.key", "./ef0c0ecdba3f5dcee71d2c5ba8f5cd3d328a520d0d272d9b4fa5efc7ed8e014a-certificate.pem.crt")
 
 print("Endpoint Configured")
-
 myMQTTClient.connect()
 print("Client Connected")
 
-wifi_data = scan_wifi_networks()
+ssids, signal_strength, frequency, latency = get_wifi_details()
 
-for i, ssid in enumerate(wifi_data):
-    jsonmsg = json.dumps({
-        "timestamp": time.time(),
-        "ssid": ssid,
-        "device_id": "raspberryPi",
-        "message_count": i
-    }, indent=2)
-    print(jsonmsg)
-    topic = "wifi/inbound"
-    myMQTTClient.publish(topic, jsonmsg, 0)
-    print(f"Message Sent for SSID: {ssid}")
-    time.sleep(1)
+# Assuming you want to send a single message with all details
+jsonmsg = json.dumps({
+    "timestamp": time.time(),
+    "ssids": ssids,
+    "signal_strength": signal_strength,
+    "frequency": frequency,
+    "latency": latency,
+    "device_id": "raspberryPi"
+}, indent=2)
+
+print(jsonmsg)
+topic = "wifi/inbound"
+myMQTTClient.publish(topic, jsonmsg, 0)
+print("Message Sent")
 
 myMQTTClient.disconnect()
 print("Client Disconnected")
